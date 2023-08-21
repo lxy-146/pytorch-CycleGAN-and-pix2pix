@@ -28,6 +28,7 @@ See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-a
 """
 import os
 import cv2
+import shutil
 from PIL import Image
 import numpy as np
 from options.test_options import TestOptions
@@ -35,6 +36,7 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
+from util.util import file2zip
 
 try:
     import wandb
@@ -73,3 +75,5 @@ if __name__ == '__main__':
         img = img.convert('L')
         img_path = os.path.join(save_path, img_path[0].split('/')[-1])
         img.save(img_path)
+    file2zip(os.path.join('results', f'{opt.results_dir}.zip'), save_path)
+    shutil.rmtree(save_path)

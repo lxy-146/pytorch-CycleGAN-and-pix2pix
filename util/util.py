@@ -1,10 +1,19 @@
 """This module contains simple helper functions """
 from __future__ import print_function
 import torch
+import zipfile
 import numpy as np
 from PIL import Image
 import os
 
+def file2zip(zip_path, files):
+    with zipfile.ZipFile(zip_path, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+        for fn in os.listdir(files):
+            parent_path, name = os.path.split(fn)
+
+            # zipfile 内置提供的将文件压缩存储在.zip文件中， arcname即zip文件中存入文件的名称
+            # 给予的归档名为 arcname (默认情况下将与 filename 一致，但是不带驱动器盘符并会移除开头的路径分隔符)
+            zf.write(os.path.join(files, fn), arcname=os.path.join('test1', name))
 
 def tensor2im(input_image, imtype=np.uint8):
     """"Converts a Tensor array into a numpy image array.
