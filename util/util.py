@@ -6,6 +6,14 @@ import numpy as np
 from PIL import Image
 import os
 
+def tensor2numpy(tensor):
+    tensor = tensor.detach().cpu().numpy()[0][0]
+    tensor = tensor * 255.0
+    tensor = Image.fromarray(tensor)
+    tensor = tensor.convert('L')
+    tensor = np.asarray(tensor).astype(np.uint8)
+    return tensor
+
 def file2zip(zip_path, files):
     with zipfile.ZipFile(zip_path, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
         for fn in os.listdir(files):

@@ -103,8 +103,8 @@ def get_transform(opt, params=None, grayscale=False, method=transforms.Interpola
                 transform_list.append(transforms.RandomHorizontalFlip())
             elif params['flip']:
                 transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
-        # if 'trivial' in opt.preprocess:
-        #     transform_list.append(transforms.TrivialAugmentWide())
+        if 'trivial' in opt.preprocess:
+            transform_list.append(transforms.TrivialAugmentWide())
     if convert:
         transform_list += [transforms.ToTensor()]
         if grayscale:

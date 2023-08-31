@@ -19,14 +19,53 @@ See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-p
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
 import time
+import torch
+import sys
+from torch.autograd import Variable
 from options.train_options import TrainOptions
+from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
+from util.val import lxy_ssim_psnr
+from util.util import tensor2numpy
+
+def val(opt, model, dataloader):
+    model.eval()
+    fake_imgs = []
+    real_imgs = []
+    # Inputs & targets memory allocation
+    Tensor = torch.cuda.FloatTensor
+    input_A = Tensor(1, 3, opt.crop_size, opt.crop_size)
+    input_B = Tensor(1, 3, opt.crop_size, opt.crop_size)
+    for i, batch in enumerate(dataloader):
+        # Set model input
+        real_A = Variable(input_A.copy_(batch['A']))
+        real_B = Variable(input_B.copy_(batch['B']))
+
+        # Generate output
+        model.set_input(batch)
+        model.test()
+        fake_B = model.get_current_visuals()
+        fake_B = 0.5 * (fake_B['fake_B'].data + 1.0)
+        real_B = 0.5 * (real_B.data + 1.0)
+        fake_B = tensor2numpy(fake_B)
+        real_B = tensor2numpy(real_B)
+        fake_imgs.append(fake_B)
+        real_imgs.append(real_B)
+        sys.stdout.write('\rGenerated images %04d of %04d' % (i + 1, len(dataloader)))
+    sys.stdout.write('\n')
+    ssim, psnr = lxy_ssim_psnr(real_imgs, fake_imgs)
+    model.train()
+    return ssim, psnr
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
+    need_val = opt.val
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
+    if need_val:
+        test_opt = TestOptions().parse()
+        val_dataset = create_dataset(test_opt)
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
 
@@ -34,6 +73,9 @@ if __name__ == '__main__':
     model.setup(opt)               # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = 0                # the total number of training iterations
+    best_psnr = 0
+    best_ssim = 0
+    psnr_rate = 0.6
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
@@ -69,6 +111,15 @@ if __name__ == '__main__':
             #     model.save_networks(save_suffix)
 
             iter_data_time = time.time()
+        if epoch % 10 == 0 and need_val:
+            ssim, psnr = val(opt, model, val_dataset)
+            if (1 - psnr_rate) * ssim + psnr_rate * (0.01 * psnr) > (1 - psnr_rate) * best_ssim + psnr_rate * 0.01 * best_psnr:
+                best_ssim = ssim
+                best_psnr = psnr
+                model.save_networks('best')
+                visualizer.print_ssim_psnr(epoch, ssim, psnr, isBest=True)
+            else:
+                visualizer.print_ssim_psnr(epoch, ssim, psnr)
         if epoch % opt.save_epoch_freq == 0:              # cache our model every <save_epoch_freq> epochs
             print('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
             model.save_networks('latest')

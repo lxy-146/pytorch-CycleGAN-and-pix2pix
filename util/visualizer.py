@@ -255,3 +255,12 @@ class Visualizer():
         print(message)  # print the message
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)  # save the message
+
+    def print_ssim_psnr(self, epoch, ssim, psnr, isBest=False):
+        if isBest:
+            message = f'Best epoch: {epoch}, ssim: {ssim}, psnr: {psnr}'
+        else:
+            message = f'epoch: {epoch}, ssim: {ssim}, psnr: {psnr}'
+        print(message)
+        with open(self.log_name, "a") as log_file:
+            log_file.write('%s\n' % message)  # save the message
